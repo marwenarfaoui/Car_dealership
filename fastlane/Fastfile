@@ -1,0 +1,58 @@
+default_platform(:android)
+
+platform :android do
+  desc "Lancer les tests unitaires et UI"
+  lane :test do
+    UI.message "Lancement des tests unitaires..."
+    sh("cd .. && npm test")
+    
+    UI.message "Lancement des tests UI avec Gradle..."
+    gradle(task: "testDebugUnitTest", project_dir: "android/")
+  end
+
+  desc "Build AAB et déploiement sur Google Play (piste interne)"
+  lane :deploy_internal do
+    UI.message "Nettoyage du répertoire Android..."
+    gradle(task: "clean", project_dir: "android/")
+    
+    UI.message "Build du bundle release..."
+    gradle(task: "bundleRelease", project_dir: "android/")
+    
+    UI.message "Envoi vers Google Play Store (piste interne)..."
+    upload_to_play_store(
+      track: 'internal',
+      release_status: 'draft',
+      aab: 'android/app/build/outputs/bundle/release/app-release.aab',
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+    
+    UI.success "✅ Déploiement sur Google Play Store réussi!"
+  end
+
+  desc "Build APK de débogage"
+  lane :build_debug do
+    UI.message "Build de l'APK de débogage..."
+    gradle(task: "assembleDebug", project_dir: "android/")
+    
+    UI.success "✅ APK de débogage créé: android/app/build/outputs/apk/debug/app-debug.apk"
+  end
+
+  desc "Build APK et AAB release"
+  lane :build_release do
+    UI.message "Build du bundle release..."
+    gradle(task: "bundleRelease", project_dir: "android/")
+    
+    UI.success "✅ Bundle release créé: android/app/build/outputs/bundle/release/app-release.aab"
+  end
+
+  desc "Exécuter les tests E2E avec Detox"
+  lane :test_e2e do
+    UI.message "Démarrage des tests E2E Detox..."
+    sh("cd .. && npx detox build --configuration android.emu")
+    sh("cd .. && npx detox test --configuration android.emu")
+    
+    UI.success "✅ Tests E2E réussis!"
+  end
+end
